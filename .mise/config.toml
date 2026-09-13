@@ -1,0 +1,28 @@
+[settings]
+experimental = true
+
+[tools]
+go = "1.27.1"
+
+[tasks.local-build]
+description = "Build and test an app locally"
+dir = "{{config_root}}/.cache"
+usage = '''
+arg "<app>"
+'''
+run = '''
+rsync -aqIP {{config_root}}/apps/"$usage_app"/ .
+docker buildx bake --no-cache --metadata-file docker-bake.json --set=*.output=type=docker --load
+TEST_IMAGE="$(jq -r '."image-local"."image.name" | sub("^docker.io/library/"; "")' docker-bake.json)" go test -v {{config_root}}/apps/"$usage_app"/...
+'''
+
+[tasks.remote-build]
+description = "Trigger a remote build"
+usage = '''
+arg "<app>"
+arg "[release]" help="release flag (default: false)"
+'''
+run = 'gh workflow run release.yaml -f app="$usage_app" -f release="${usage_release:-false}"'
+
+[hooks]
+postinstall = ["mkdir -p {{config_root}}/.cache"]

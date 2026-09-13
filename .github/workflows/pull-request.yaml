@@ -1,0 +1,63 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Pull Request
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      changed-files: ${{ steps.changed-files.outputs.changed_files }}
+    steps:
+      - name: Get changed files
+        uses: bjw-s-labs/action-changed-files@a9a36fb08ce06db9b02fbd8026cc2c0945eb9841 # v0.6.0
+        id: changed-files
+        with:
+          path: apps
+          include_only_directories: true
+          max_depth: 1
+
+  build:
+    if: ${{ needs.prepare.outputs.changed-files != '[]' }}
+    name: Build ${{ matrix.app }}
+    needs:
+      - prepare
+    uses: ./.github/workflows/app-builder.yaml
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      matrix:
+        app: ${{ fromJSON(needs.prepare.outputs.changed-files) }}
+      fail-fast: false
+    with:
+      app: ${{ matrix.app }}
+      release: false
+
+  # Single required check for Renovate auto-merge
+  status:
+    if: ${{ !cancelled() }}
+    name: Build Success
+    needs:
+      - prepare
+      - build
+    runs-on: ubuntu-24.04
+    permissions: {}
+    steps:
+      - name: Any jobs failed?
+        if: ${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}
+        run: exit 1

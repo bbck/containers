@@ -1,0 +1,84 @@
+---
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - apps/**
+      - "!apps/**/*_test.go"
+  workflow_dispatch:
+    inputs:
+      app:
+        type: string
+        description: App Name
+        required: true
+      release:
+        type: boolean
+        description: Release
+        required: false
+        default: false
+
+permissions:
+  contents: read
+
+jobs:
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      changed-files: ${{ steps.changed-files.outputs.changed_files }}
+    steps:
+      - name: Get Changed Files
+        uses: bjw-s-labs/action-changed-files@a9a36fb08ce06db9b02fbd8026cc2c0945eb9841 # v0.6.0
+        id: changed-files
+        with:
+          path: apps
+          include_only_directories: true
+          max_depth: 1
+
+  changed:
+    if: ${{ needs.prepare.outputs.changed-files != '[]' || github.event_name == 'workflow_dispatch' }}
+    name: Get Changed Apps
+    needs:
+      - prepare
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    outputs:
+      apps: ${{ steps.apps.outputs.apps }}
+    steps:
+      - name: Get Apps
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        id: apps
+        env:
+          APPS: ${{ github.event_name == 'workflow_dispatch' && inputs.app || join(fromJSON(needs.prepare.outputs.changed-files), ' ') }}
+        with:
+          script: |
+            const { APPS } = process.env;
+            const appsToBuild = APPS.split(' ').filter(Boolean);
+            core.setOutput('apps', JSON.stringify(appsToBuild));
+            core.summary.addHeading('Apps to build:').addList(appsToBuild).write();
+
+  build:
+    if: ${{ needs.changed.outputs.apps != '[]' }}
+    name: Build ${{ matrix.app }}
+    needs:
+      - changed
+    uses: ./.github/workflows/app-builder.yaml
+    permissions:
+      attestations: write
+      contents: read
+      id-token: write
+      packages: write
+    strategy:
+      matrix:
+        app: ${{ fromJSON(needs.changed.outputs.apps) }}
+      fail-fast: false
+    with:
+      app: ${{ matrix.app }}
+      release: ${{ github.event_name == 'workflow_dispatch' && inputs.release || github.event_name == 'push' }}
