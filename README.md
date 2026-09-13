@@ -8,6 +8,7 @@ Each app lives in `apps/<app>/` with a `Dockerfile`, a `docker-bake.hcl` and a `
 
 | Image | Upstream |
 | --- | --- |
+| `ghcr.io/bbck/mcpvault` | [MCPVault](https://www.npmjs.com/package/@bitbonsai/mcpvault) behind [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy) |
 | `ghcr.io/bbck/obsidian-headless` | [obsidian-headless](https://www.npmjs.com/package/obsidian-headless) |
 
 ## Tags
