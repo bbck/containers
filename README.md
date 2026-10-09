@@ -9,6 +9,7 @@ Each app lives in `apps/<app>/` with a `Dockerfile`, a `docker-bake.hcl` and a `
 | Image | Upstream |
 | --- | --- |
 | `ghcr.io/bbck/mcpvault` | [MCPVault](https://www.npmjs.com/package/@bitbonsai/mcpvault) behind [mcp-proxy](https://github.com/sparfenyuk/mcp-proxy) |
+| `ghcr.io/bbck/nfs-server` | NFSv4 server for the kernel's nfsd, using [nfs-utils](https://pkgs.alpinelinux.org/package/v3.24/main/x86_64/nfs-utils) from Alpine |
 | `ghcr.io/bbck/obsidian-headless` | [obsidian-headless](https://www.npmjs.com/package/obsidian-headless) |
 | `ghcr.io/bbck/things-cloud-mcp` | [Things Cloud MCP](https://github.com/wbopan/things-cloud-mcp) |
 
