@@ -5,15 +5,29 @@
 #
 # Exports come from /etc/exports and /etc/exports.d/*.exports, and are
 # reloaded when those files change.
+#
+# The exports must include an NFSv4 root with fsid=0 on a real filesystem,
+# e.g. the parent of the exported datasets. Without one, mountd puts the root
+# on the container's own overlayfs "/", which the kernel can't export, and
+# every mount fails with "No such file or directory". Clients then mount paths
+# relative to that root.
 
 set -euo pipefail
 shopt -s nullglob
 
+# The NFS tools mostly fail without saying why, so name the command that did
+trap 'echo "Failed: $BASH_COMMAND" >&2' ERR
+
 NFS_THREADS="${NFS_THREADS:-8}"
+
+# NFSv4 only, on every rpc.nfsd call. With NFSv3 enabled the kernel tries to
+# register it with rpcbind, which doesn't run here, and rpc.nfsd fails. That
+# includes setting 0 threads when nfsd isn't running yet.
+NFSD_ARGS=(--no-nfs-version 3 --no-udp)
 
 stop() {
     echo "Stopping NFS server"
-    rpc.nfsd 0
+    rpc.nfsd "${NFSD_ARGS[@]}" 0
     exportfs -ua
     kill "$mountd_pid" "$nfsdcld_pid" 2>/dev/null || true
     exit "${1:-0}"
@@ -29,7 +43,7 @@ mountpoint -q /proc/fs/nfsd || mount -t nfsd nfsd /proc/fs/nfsd
 mountpoint -q /var/lib/nfs/rpc_pipefs || mount -t rpc_pipefs rpc_pipefs /var/lib/nfs/rpc_pipefs
 
 # Clear anything a previous run left behind if it didn't stop cleanly
-rpc.nfsd 0
+rpc.nfsd "${NFSD_ARGS[@]}" 0
 exportfs -ua
 
 # Answers the kernel's export lookups, which NFSv4 needs as well
@@ -44,7 +58,7 @@ trap stop TERM INT
 
 exportfs -ra
 exportfs -v
-rpc.nfsd --no-nfs-version 3 --no-udp "$NFS_THREADS"
+rpc.nfsd "${NFSD_ARGS[@]}" "$NFS_THREADS"
 echo "NFS server started with $NFS_THREADS threads"
 
 last_hash=$(exports_hash)
