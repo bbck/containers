@@ -20,15 +20,18 @@ trap 'echo "Failed: $BASH_COMMAND" >&2' ERR
 
 NFS_THREADS="${NFS_THREADS:-8}"
 
-# NFSv4 only, on every rpc.nfsd call. With NFSv3 enabled the kernel tries to
-# register it with rpcbind, which doesn't run here, and rpc.nfsd fails. That
-# includes setting 0 threads when nfsd isn't running yet.
-NFSD_ARGS=(--no-nfs-version 3 --no-udp)
+# Stop nfsd's threads, if it's running. When it isn't, "rpc.nfsd 0" sets it up
+# with the kernel's default versions instead, NFSv3 included, which fails (see
+# the start below).
+stop_threads() {
+    if (($(cat /proc/fs/nfsd/threads) > 0)); then
+        rpc.nfsd 0
+    fi
+}
 
 stop() {
     echo "Stopping NFS server"
-    rpc.nfsd "${NFSD_ARGS[@]}" 0
-    exportfs -ua
+    stop_threads
     kill "$mountd_pid" "$nfsdcld_pid" 2>/dev/null || true
     exit "${1:-0}"
 }
@@ -42,12 +45,12 @@ mkdir -p /var/lib/nfs/rpc_pipefs /var/lib/nfs/nfsdcld
 mountpoint -q /proc/fs/nfsd || mount -t nfsd nfsd /proc/fs/nfsd
 mountpoint -q /var/lib/nfs/rpc_pipefs || mount -t rpc_pipefs rpc_pipefs /var/lib/nfs/rpc_pipefs
 
-# Clear anything a previous run left behind if it didn't stop cleanly
-rpc.nfsd "${NFSD_ARGS[@]}" 0
-exportfs -ua
+# Stop threads a previous run left behind if it didn't stop cleanly
+stop_threads
 
-# Answers the kernel's export lookups, which NFSv4 needs as well
-rpc.mountd --foreground --no-nfs-version 3 --no-udp &
+# Answers the kernel's export lookups. NFSv4 doesn't use the MOUNT protocol, so
+# serve no versions of it, which leaves nothing to register with rpcbind.
+rpc.mountd --foreground --no-nfs-version 2 --no-nfs-version 3 &
 mountd_pid=$!
 
 # Tracks NFSv4 clients so they can reclaim their state after a restart
@@ -58,7 +61,9 @@ trap stop TERM INT
 
 exportfs -ra
 exportfs -v
-rpc.nfsd "${NFSD_ARGS[@]}" "$NFS_THREADS"
+# NFSv4 only: the kernel registers NFSv3 with rpcbind, which doesn't run here,
+# and rpc.nfsd fails when it can't
+rpc.nfsd --no-nfs-version 3 "$NFS_THREADS"
 echo "NFS server started with $NFS_THREADS threads"
 
 last_hash=$(exports_hash)
