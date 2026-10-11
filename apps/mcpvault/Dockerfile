@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM ghcr.io/sparfenyuk/mcp-proxy:v0.12.0@sha256:ce037447191eeed517faa80640539dedaffb79a3ec107bfd23625a4438b0d06d
+FROM ghcr.io/sparfenyuk/mcp-proxy:v0.13.0@sha256:060ab76d1125f1539de6533e95f63ba7853b141c945099f235e71acd416b86e2
 ARG VERSION
 
 # Alpine 3.23 ships Node 24; npm is only needed for the install
