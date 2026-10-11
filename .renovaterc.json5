@@ -1,6 +1,6 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  extends: ["config:recommended", ":disableDependencyDashboard"],
+  extends: ["github>home-operations/renovate-config", ":disableDependencyDashboard"],
   customManagers: [
     {
       customType: "regex",
@@ -28,6 +28,21 @@
       matchFileNames: ["**/docker-bake.hcl"],
       automerge: true,
       ignoreTests: false,
+    },
+    {
+      description: [
+        "Exempt App Updates from prHourlyLimit and create them last, since they still add to the hourly PR count",
+      ],
+      matchFileNames: ["apps/**"],
+      prHourlyLimit: 0,
+      prPriority: -1,
+    },
+    {
+      description: ["Allowed Alpine Version for Base Images"],
+      matchDatasources: ["docker"],
+      matchFileNames: ["**/Dockerfile"],
+      matchPackageNames: ["/alpine/"],
+      allowedVersions: "/3\\.24/",
     },
     {
       description: ["Allowed Node Version for Base Images"],
