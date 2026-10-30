@@ -6,7 +6,7 @@ variable "APP" {
 
 variable "VERSION" {
   // renovate: datasource=npm depName=@bitbonsai/mcpvault
-  default = "0.17.2"
+  default = "0.17.3"
 }
 
 variable "SOURCE" {
