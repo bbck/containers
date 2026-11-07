@@ -1,6 +1,7 @@
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
-  extends: ["github>home-operations/renovate-presets", ":disableDependencyDashboard"],
+  extends: ["github>home-operations/.github:renovate-config", ":disableDependencyDashboard"],
+  semanticCommits: "enabled",
   customManagers: [
     {
       customType: "regex",
@@ -22,6 +23,15 @@
       matchFileNames: ["**/docker-bake.hcl", "**/Dockerfile"],
       semanticCommitScope: "{{parentDir}}",
       semanticCommitType: "release",
+    },
+    {
+      description: [
+        "Digest-only app updates have no newVersion, so show short digests instead (was rendering as '( 3.24 → )').",
+        "Not needed upstream: its Dockerfiles use bare tags, while this repo pins FROM digests.",
+      ],
+      matchFileNames: ["**/docker-bake.hcl", "**/Dockerfile"],
+      matchUpdateTypes: ["digest"],
+      commitMessageExtra: "( {{currentDigestShort}} → {{newDigestShort}} )",
     },
     {
       description: ["Auto-merge App Updates"],
