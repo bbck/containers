@@ -29,6 +29,30 @@ jobs:
           include_only_directories: true
           max_depth: 1
 
+  # Runs on every PR so go.mod-only changes (e.g. testcontainers bumps) are compiled
+  # even when no app changed and the build matrix is skipped.
+  go-check:
+    name: Go Compile & Vet
+    runs-on: ubuntu-26.04
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Mise
+        uses: jdx/mise-action@6be3c7ed4c21d4f76b208d351d95aac273ebb76d # v5.2.4
+        with:
+          experimental: true
+
+      - name: Compile tests
+        run: go test -run='^$' ./...
+
+      - name: Vet
+        run: go vet ./...
+
   build:
     if: ${{ needs.prepare.outputs.changed-files != '[]' }}
     name: Build ${{ matrix.app }}
@@ -54,6 +78,7 @@ jobs:
     name: Build Success
     needs:
       - prepare
+      - go-check
       - build
     runs-on: ubuntu-26.04
     permissions: {}
