@@ -2,7 +2,7 @@
 experimental = true
 
 [tools]
-go = "1.27.3"
+go = "1.27.4"
 
 [tasks.local-build]
 description = "Build and test an app locally"
